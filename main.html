@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optics Quest: Petualangan Fisika Optik</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e0f7fa;
+            color: #333;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        #gameContainer {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #map {
+            display: grid;
+            grid-template-columns: repeat(5, 50px);
+            grid-template-rows: repeat(5, 50px);
+            gap: 5px;
+            margin: 20px auto;
+            width: 250px;
+            height: 250px;
+        }
+        .cell {
+            border: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .player { background-color: #4caf50; color: white; }
+        .quest { background-color: #ff9800; }
+        .empty { background-color: #f0f0f0; }
+        .tree { background-color: #8bc34a; }
+        .completed { background-color: #4caf50; opacity: 0.5; }
+        #controls { margin: 20px 0; }
+        button {
+            margin: 5px;
+            padding: 10px;
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover { background-color: #1976d2; }
+        #questModal, #rewardModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        #questContent, #rewardContent {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 400px;
+            text-align: left;
+        }
+        #rewardContent { text-align: center; }
+        .trophy { font-size: 50px; }
+        #score { font-size: 1.2em; margin: 10px 0; }
+        @keyframes confetti {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(100vh); }
+        }
+        .confetti { animation: confetti 3s linear infinite; position: absolute; }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <h1>Optics Quest: Petualangan Fisika Optik</h1>
+        <p>Selamat datang! Kendalikan karakter siswa fisika, dekati quest, dan jawab pertanyaan optik untuk mendapatkan Photon Points. Jawab semua untuk hadiah!</p>
+        <div id="score">Photon Points: <span id="points">0</span></div>
+        
+        <div id="map"></div>
+        
+        <div id="controls">
+            <button id="up">Atas ↑</button><br>
+            <button id="left">Kiri ←</button>
+            <button id="right">Kanan →</button><br>
+            <button id="down">Bawah ↓</button>
+        </div>
+        
+        <div id="questModal">
+            <div id="questContent">
+                <h3 id="questTitle"></h3>
+                <p id="questDesc"></p>
+                <form id="questForm">
+                    <label for="answerInput">Jawaban Anda:</label>
+                    <input type="number" id="answerInput" step="1" required>
+                    <button type="submit">Kirim</button>
+                </form>
+                <div id="feedback"></div>
+                <button id="closeQuest">Tutup</button>
+            </div>
+        </div>
+        
+        <div id="rewardModal">
+            <div id="rewardContent">
+                <div class="trophy">🏆</div>
+                <h2>Selamat! Anda Telah Menyelesaikan Optics Quest!</h2>
+                <p>Anda telah menjawab semua pertanyaan dengan benar. Hadiah Anda:</p>
+                <ul>
+                    <li>+50 Photon Points bonus!</li>
+                    <li>Sertifikat Penyelesaian (klik unduh di bawah).</li>
+                    <li>Tips Fisika: "Optik adalah cabang fisika yang mempelajari cahaya—teruslah belajar!"</li>
+                </ul>
+                <button id="downloadCert">Unduh Sertifikat</button>
+                <button id="closeReward">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const mapSize = 5;
+        let playerPos = { x: 0, y: 0 };
+        let points = 0;
+        let completedQuests = new Set();
+        const quests = [
+            { x: 1, y: 1, title: "Quest 1: Dasar Cermin", desc: "Objek 4cm ditempatkan 6cm di depan cermin cekung (f=8cm). Hitung jarak gambar (di) menggunakan 1/f = 1/do + 1/di. (Petunjuk: di = 24 cm)", correct: 24 },
+            { x: 3, y: 2, title: "Quest 2: Petualangan Refraksi", desc: "Cahaya masuk dari udara ke medium dengan indeks refraksi n=√2≈1.41 pada sudut 45°. Hitung sudut refraksi θ2 (dalam derajat bulat). (Petunjuk: θ2 = 30°)", correct: 30 },
+            { x: 4, y: 4, title: "Quest 3: Lab Lensa", desc: "Lensa cembung (f=10cm) membentuk gambar 20cm dari lensa. Hitung jarak objek (do). (Petunjuk: do = 20 cm)", correct: 20 },
+            { x: 2, y: 3, title: "Quest 4: Keajaiban Gelombang", desc: "Hitung panjang gelombang cahaya (dalam nm) jika jarak celah d=0.5mm, sudut θ=30°, dan orde m=1. (Petunjuk: λ = 250 nm)", correct: 250 },
+            { x: 0, y: 4, title: "Quest 5: Bos Optik", desc: "Desain mikroskop: Objektif f=5mm, okuler f=25mm, objek 5.5mm dari objektif. Hitung pembesaran total. (Petunjuk: Total m = 500)", correct: 500 }
+        ];
+
+        function initMap() {
+            const map = document.getElementById('map');
+            map.innerHTML = '';
+            for (let y = 0; y < mapSize; y++) {
+                for (let x = 0; x < mapSize; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if (x === playerPos.x && y === playerPos.y) {
+                        cell.classList.add('player');
+                        cell.textContent = '👨‍🎓';
+                    } else if (quests.some(q => q.x === x && q.y === y)) {
+                        const quest = quests.find(q => q.x === x && q.y === y);
+                        if (completedQuests.has(quest.title)) {
+                            cell.classList.add('completed');
+                            cell.textContent = '✅';
+                        } else {
+                            cell.classList.add('quest');
+                            cell.textContent = '❓';
+                        }
+                    } else if ((x + y) % 3 === 0) {
+                        cell.classList.add('tree');
+                        cell.textContent = '🌳';
+                    } else {
+                        cell.classList.add('empty');
+                    }
+                    cell.addEventListener('click', () => moveTo(x, y));
+                    map.appendChild(cell);
+                }
+            }
+        }
+
+        function moveTo(x, y) {
+            if (Math.abs(x - playerPos.x) + Math.abs(y - playerPos.y) === 1) {
+                playerPos = { x, y };
+                initMap();
+                checkQuest();
+            }
+        }
+
+        function checkQuest() {
+            const quest = quests.find(q => q.x === playerPos.x && q.y === playerPos.y && !completedQuests.has(q.title));
+            if (quest) {
+                document.getElementById('questTitle').textContent = quest.title;
+                document.getElementById('questDesc').textContent = quest.desc;
+                document.getElementById('questModal').style.display = 'flex';
+            }
+        }
+
+        document.getElementById('up').addEventListener('click', () => moveTo(playerPos.x, playerPos.y - 1));
+        document.getElementById('down').addEventListener('click', () => moveTo(playerPos.x, playerPos.y + 1));
+        document.getElementById('left').addEventListener('click', () => moveTo(playerPos.x - 1, playerPos.y));
+        document.getElementById('right').addEventListener('click', () => moveTo(playerPos.x + 1, playerPos.y));
+
+        document.getElementById('questForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const input = parseInt(document.getElementById('answerInput').value); // Parse sebagai integer
+            const quest = quests.find(q => q.x === playerPos.x && q.y === playerPos.y);
+            const feedback = document.getElementById('feedback');
+            if (input === quest.correct) { // Cek persis untuk bilangan bulat
+                feedback.textContent = 'Benar! +10 Photon Points.';
+                points += 10;
+                completedQuests.add(quest.title);
+                if (completedQuests.size === quests.length) {
+                    showReward();
+                }
+            } else {
+                feedback.textContent = 'Salah. Jawaban benar: ' + quest.correct + '. Coba lagi!';
+            }
+            document.getElementById('points').textContent = points;
+            feedback.style.display = 'block';
+            initMap();
+        });
+
+        function showReward() {
+            points += 50;
+            document.getElementById('points').textContent = points;
+            document.getElementById('rewardModal').style.display = 'flex';
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.textContent = '🎉';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.animationDelay = Math.random() * 3 + 's';
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 3000);
+            }
+        }
+
+        document.getElementById('downloadCert').addEventListener('click', () => {
+            const certText = `Sertifikat Penyelesaian\n\nOptics Quest\n\nPemain: [Nama Anda]\nSkor Akhir: ${points} Photon Points\nTanggal: ${new Date().toLocaleDateString('id-ID')}\n\nSelamat! Anda telah menguasai dasar optik fisika.`;
+            const blob = new Blob([certText], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'Sertifikat_Optics_Quest.txt';
+            link.click();
+        });
+
+        document.getElementById('closeQuest').addEventListener('click', () => {
+            document.getElementById('questModal').style.display = 'none';
+            document.getElementById('feedback').style.display = 'none';
+        });
+
+        document.getElementById('closeReward').addEventListener('click', () => {
+            document.getElementById('rewardModal').style.display = 'none';
+        });
+
+        initMap();
+    </script>
+</body>
+</html>
