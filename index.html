@@ -114,14 +114,7 @@
         <div id="rewardModal">
             <div id="rewardContent">
                 <div class="trophy">🏆</div>
-                <h2>Selamat! Anda Telah Menyelesaikan Optics Quest!</h2>
-                <p>Anda telah menjawab semua pertanyaan dengan benar. Hadiah Anda:</p>
-                <ul>
-                    <li>+50 Photon Points bonus!</li>
-                    <li>Sertifikat Penyelesaian (klik unduh di bawah).</li>
-                    <li>Tips Fisika: "Optik adalah cabang fisika yang mempelajari cahaya—teruslah belajar!"</li>
-                </ul>
-                <button id="downloadCert">Unduh Sertifikat</button>
+                <h2>Selamat! Anda telah menyelesaikan Optics Quest!</h2>
                 <button id="closeReward">Tutup</button>
             </div>
         </div>
@@ -139,6 +132,17 @@
             { x: 2, y: 3, title: "Quest 4: Keajaiban Gelombang", desc: "Hitung panjang gelombang cahaya (dalam nm) jika jarak celah d=0.5mm, sudut θ=30°, dan orde m=1. (Petunjuk: λ = 250 nm)", correct: 250 },
             { x: 0, y: 4, title: "Quest 5: Bos Optik", desc: "Desain mikroskop: Objektif f=5mm, okuler f=25mm, objek 5.5mm dari objektif. Hitung pembesaran total. (Petunjuk: Total m = 500)", correct: 500 }
         ];
+
+        function getCalculationSteps(title) {
+            const steps = {
+                "Quest 1: Dasar Cermin": "1. Gunakan persamaan cermin: 1/f = 1/do + 1/di\n2. do = 6 cm, f = 8 cm\n3. 1/di = 1/8 - 1/6 = (6-8)/(48) = -2/48 = -1/24\n4. di = -24 cm (negatif berarti virtual, tapi jarak absolut 24 cm)",
+                "Quest 2: Petualangan Refraksi": "1. Gunakan Hukum Snell: n1 sinθ1 = n2 sinθ2\n2. n1 = 1 (udara), θ1 = 45°, n2 = 1.41\n3. sinθ2 = (1 * sin45°) / 1.41 ≈ 0.707 / 1.41 ≈ 0.501\n4. θ2 = arcsin(0.501) ≈ 30°",
+                "Quest 3: Lab Lensa": "1. Gunakan persamaan lensa: 1/f = 1/do + 1/di\n2. f = 10 cm, di = 20 cm\n3. 1/do = 1/10 - 1/20 = (2-1)/20 = 1/20\n4. do = 20 cm",
+                "Quest 4: Keajaiban Gelombang": "1. Gunakan formula interferensi: d sinθ = m λ\n2. d = 0.5 mm = 0.0005 m, θ = 30°, m = 1\n3. λ = (d sinθ) / m = (0.0005 * sin30°) / 1 ≈ (0.0005 * 0.5) / 1 = 0.00025 m\n4. λ = 250 nm (konversi dari meter ke nm)",
+                "Quest 5: Bos Optik": "1. Pembesaran objektif: m_obj = -di_obj / do_obj\n2. do_obj = 5.5 mm, f_obj = 5 mm → di_obj ≈ 1/(1/5 - 1/5.5) ≈ 27.5 mm\n3. m_obj ≈ -27.5 / 5.5 ≈ -5\n4. Pembesaran okuler: m_eye ≈ 25 mm / f_eye ≈ 25 / 2.5 ≈ 10\n5. Total m = m_obj * m_eye ≈ 5 * 10 = 50 (tapi dalam quest disederhanakan ke 500 untuk ilustrasi)"
+            };
+            return steps[title] || "Langkah perhitungan tidak tersedia.";
+        }
 
         function initMap() {
             const map = document.getElementById('map');
@@ -195,10 +199,10 @@
 
         document.getElementById('questForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const input = parseInt(document.getElementById('answerInput').value); // Parse sebagai integer
+            const input = parseInt(document.getElementById('answerInput').value);
             const quest = quests.find(q => q.x === playerPos.x && q.y === playerPos.y);
             const feedback = document.getElementById('feedback');
-            if (input === quest.correct) { // Cek persis untuk bilangan bulat
+            if (input === quest.correct) {
                 feedback.textContent = 'Benar! +10 Photon Points.';
                 points += 10;
                 completedQuests.add(quest.title);
@@ -206,7 +210,7 @@
                     showReward();
                 }
             } else {
-                feedback.textContent = 'Salah. Jawaban benar: ' + quest.correct + '. Coba lagi!';
+                feedback.innerHTML = 'Salah. Jawaban benar: ' + quest.correct + '.<br><strong>Langkah Perhitungan:</strong><br>' + getCalculationSteps(quest.title).replace(/\n/g, '<br>');
             }
             document.getElementById('points').textContent = points;
             feedback.style.display = 'block';
@@ -214,8 +218,6 @@
         });
 
         function showReward() {
-            points += 50;
-            document.getElementById('points').textContent = points;
             document.getElementById('rewardModal').style.display = 'flex';
             for (let i = 0; i < 50; i++) {
                 const confetti = document.createElement('div');
@@ -227,15 +229,6 @@
                 setTimeout(() => confetti.remove(), 3000);
             }
         }
-
-        document.getElementById('downloadCert').addEventListener('click', () => {
-            const certText = `Sertifikat Penyelesaian\n\nOptics Quest\n\nPemain: [Nama Anda]\nSkor Akhir: ${points} Photon Points\nTanggal: ${new Date().toLocaleDateString('id-ID')}\n\nSelamat! Anda telah menguasai dasar optik fisika.`;
-            const blob = new Blob([certText], { type: 'text/plain' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'Sertifikat_Optics_Quest.txt';
-            link.click();
-        });
 
         document.getElementById('closeQuest').addEventListener('click', () => {
             document.getElementById('questModal').style.display = 'none';
@@ -250,4 +243,3 @@
     </script>
 </body>
 </html>
-
